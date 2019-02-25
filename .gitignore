@@ -1,0 +1,11 @@
+bin/*
+obj/*
+lib/*
+tmp/*
+test/obj/*
+test/bin/*
+www/images/*
+*.so
+*.o
+*.log
+*.bak
