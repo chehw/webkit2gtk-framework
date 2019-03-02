@@ -1,7 +1,7 @@
 /*
  * webkit-test.c
  * 
- * Copyright 2019 chehw <chehw@debian9x64>
+ * Copyright 2019 chehw <htc.chehw@gmail.com>
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

@@ -1,7 +1,7 @@
 /*
  * shell.c
  * 
- * Copyright 2019 chehw <chehw@debian9x64>
+ * Copyright 2019 chehw <htc.chehw@gmail.com>
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -168,25 +168,27 @@ static void on_uri_entry_activate(GtkEntry * entry, shell_private_data_t * priv)
 {
 	debug_printf("(%p,%p)", entry, priv);
 	const char * uri = gtk_entry_get_text(entry);
+	if(NULL == uri || '\0' == uri[0]) return;
 	
-	if(uri && uri[0])
+	char cooked_uri[4096] = "";
+	char * location = strstr(uri, "://");
+	
+	
+	if(NULL == location)
 	{
-		char cooked_uri[4096] = "";
-		if(strncasecmp(uri, "http", 4))
-		{
-			snprintf(cooked_uri, sizeof(cooked_uri), "http://%s", uri);
-			uri = cooked_uri;
-		}
-		
-		GtkNotebook * notebook = GTK_NOTEBOOK(priv->notebook);
-		int cur_page = gtk_notebook_get_current_page(notebook);
-		
-		GtkWidget * webview = gtk_notebook_get_nth_page(notebook, cur_page);
-		if(webview)
-		{
-			webkit_web_view_load_uri(WEBKIT_WEB_VIEW(webview), uri);
-		}
+		snprintf(cooked_uri, sizeof(cooked_uri), "http://%s", uri);
+		uri = cooked_uri;
 	}
+	
+	GtkNotebook * notebook = GTK_NOTEBOOK(priv->notebook);
+	int cur_page = gtk_notebook_get_current_page(notebook);
+	
+	GtkWidget * webview = gtk_notebook_get_nth_page(notebook, cur_page);
+	if(webview)
+	{
+		webkit_web_view_load_uri(WEBKIT_WEB_VIEW(webview), uri);
+	}
+	
 	return;
 }
 
@@ -237,12 +239,11 @@ static void on_destroy_notify(GtkWidget * webview, shell_private_data_t * priv)
 	return;
 }
 
-static void on_add_page(GtkWidget * button, shell_private_data_t * priv)
+int shell_private_add_new_page(shell_private_data_t * priv, GtkWidget * webview)
 {
-	debug_printf("(%p,%p)", button, priv);
-	
-	GtkWidget * webview = webkit_web_view_new();
 	webview_list_t * list = priv->list;
+	
+	if(NULL == webview) webview = webkit_web_view_new();
 	
 	char label_name[100];
 	snprintf(label_name, sizeof(label_name), "view_%d", ++s_page_id);
@@ -256,7 +257,16 @@ static void on_add_page(GtkWidget * button, shell_private_data_t * priv)
 	g_signal_connect(webview, "destroy", G_CALLBACK(on_destroy_notify), priv);
 	
 	gtk_notebook_set_current_page(notebook, -1);
+	return 0;
+}
+
+static void on_add_page(GtkWidget * button, shell_private_data_t * priv)
+{
+	debug_printf("(%p,%p)", button, priv);
 	
+	
+	
+	shell_private_add_new_page(priv, NULL);
 	
 	return;
 }
@@ -283,7 +293,7 @@ static void on_remove_page(GtkWidget * button, shell_private_data_t * priv)
 }
 
 
-static void init_navigation_bar(GtkWidget * header_bar, shell_private_data_t * priv)
+static void init_navigation_bar(GtkWidget * hbox, shell_private_data_t * priv)
 {
 	GtkWidget * prev_button = gtk_button_new_from_icon_name("go-previous", GTK_ICON_SIZE_SMALL_TOOLBAR);
 	GtkWidget * next_button = gtk_button_new_from_icon_name("go-next", GTK_ICON_SIZE_SMALL_TOOLBAR);
@@ -294,14 +304,15 @@ static void init_navigation_bar(GtkWidget * header_bar, shell_private_data_t * p
 	GtkWidget * options = gtk_button_new_from_icon_name("preferences-system", GTK_ICON_SIZE_SMALL_TOOLBAR);
 	GtkWidget * show_inspector = gtk_button_new_from_icon_name("help-contents", GTK_ICON_SIZE_SMALL_TOOLBAR);
 	
+	gtk_box_pack_start(GTK_BOX(hbox), show_inspector, FALSE, TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(hbox), prev_button, FALSE, TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(hbox), next_button, FALSE, TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(hbox), refresh_button, FALSE, TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(hbox), home_button, FALSE, TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(hbox), uri_entry, TRUE, TRUE, 0);
 	
-	gtk_header_bar_pack_start(GTK_HEADER_BAR(header_bar), prev_button);
-	gtk_header_bar_pack_start(GTK_HEADER_BAR(header_bar), next_button);
-	gtk_header_bar_pack_start(GTK_HEADER_BAR(header_bar), refresh_button);
-	gtk_header_bar_pack_start(GTK_HEADER_BAR(header_bar), home_button);
-	gtk_header_bar_pack_start(GTK_HEADER_BAR(header_bar), uri_entry);
-	gtk_header_bar_pack_end(GTK_HEADER_BAR(header_bar), options);
-	gtk_header_bar_pack_end(GTK_HEADER_BAR(header_bar), show_inspector);
+	gtk_box_pack_start(GTK_BOX(hbox), options, FALSE, TRUE, 0);
+	
 	
 	gtk_widget_set_size_request(uri_entry, 400, -1);
 	gtk_widget_set_hexpand(uri_entry, TRUE);
@@ -335,6 +346,7 @@ static void init_windows(shell_private_data_t * priv)
 	GtkWidget * window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	GtkWidget * grid = gtk_grid_new();
 	GtkWidget * header_bar = gtk_header_bar_new();
+	GtkWidget * hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 	GtkWidget * switcher = gtk_stack_switcher_new();
 	GtkWidget * stack = gtk_stack_new();
 	GtkWidget * statusbar = gtk_statusbar_new();
@@ -357,7 +369,7 @@ static void init_windows(shell_private_data_t * priv)
 	gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(header_bar), TRUE);
 	
 	gtk_container_add(GTK_CONTAINER(window), grid);
-	//gtk_grid_attach(GTK_GRID(grid), switcher, 0, 0, 1, 1);
+	gtk_grid_attach(GTK_GRID(grid), hbox, 0, 0, 1, 1);
 	
 	//~ gtk_header_bar_pack_start(GTK_HEADER_BAR(header_bar), switcher);
 	gtk_box_pack_end(GTK_BOX(statusbar), switcher, FALSE, TRUE, 1);
@@ -390,10 +402,15 @@ static void init_windows(shell_private_data_t * priv)
 	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), webview, label);	
 	gtk_notebook_set_scrollable(GTK_NOTEBOOK(notebook), TRUE);
 	
-	GtkWidget * add = gtk_button_new_from_icon_name("window-new", GTK_ICON_SIZE_BUTTON);
-	GtkWidget * remove = gtk_button_new_from_icon_name("window-close", GTK_ICON_SIZE_BUTTON);
-	gtk_notebook_set_action_widget(GTK_NOTEBOOK(notebook), add, GTK_PACK_START);
-	gtk_notebook_set_action_widget(GTK_NOTEBOOK(notebook), remove, GTK_PACK_END);
+	GtkWidget * button_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL,0);
+	GtkWidget * add = gtk_button_new_from_icon_name("window-new", GTK_ICON_SIZE_SMALL_TOOLBAR);
+	GtkWidget * remove = gtk_button_new_from_icon_name("window-close", GTK_ICON_SIZE_SMALL_TOOLBAR);
+	gtk_box_pack_start(GTK_BOX(button_box), add, FALSE, TRUE, 1);
+	gtk_box_pack_start(GTK_BOX(button_box), remove, FALSE, TRUE, 1);
+	gtk_widget_show_all(button_box);
+	
+	gtk_notebook_set_action_widget(GTK_NOTEBOOK(notebook), button_box, GTK_PACK_START);
+	//~ gtk_notebook_set_action_widget(GTK_NOTEBOOK(notebook), remove, GTK_PACK_START);
 	gtk_widget_show(add);
 	gtk_widget_show(remove);
 	
@@ -406,7 +423,7 @@ static void init_windows(shell_private_data_t * priv)
 	gtk_widget_set_margin_top(switcher, 1);
 	gtk_widget_set_margin_bottom(switcher, 1);
 	
-	init_navigation_bar(header_bar, priv);
+	init_navigation_bar(hbox, priv);
 	
 	
 //	list->add(list, webview);

@@ -1,7 +1,7 @@
 /*
  * webview.c
  * 
- * Copyright 2019 chehw <chehw@debian9x64>
+ * Copyright 2019 chehw <htc.chehw@gmail.com>
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -69,7 +69,16 @@ static GtkWidget * on_webview_create(WebKitWebView * webview,
 	gpointer user_data)
 {
 	debug_printf("(%p, %p)", webview, user_data);
-	return NULL;
+	
+	GtkWidget * new_view = webkit_web_view_new_with_context(webkit_web_view_get_context(webview));
+	assert(new_view);
+	
+	webview_data_t * data = user_data;
+	webview_list_t * list = data->list;
+	list->add(list, new_view);
+	
+	
+	return new_view;
 }
 
 static gboolean on_webview_decide_policy(WebKitWebView * webview,
@@ -183,6 +192,14 @@ static void on_webview_ready_to_show(WebKitWebView * webview,
 	gpointer user_data)
 {
 	debug_printf("(%p, %p)", webview, user_data);
+	
+	webview_data_t * data = user_data;
+	webview_list_t * list = data->list;
+	
+	shell_private_add_new_page(list->shell->priv_data, GTK_WIDGET(webview));
+	
+	gtk_widget_show(GTK_WIDGET(webview));
+	
 	return;
 }
 

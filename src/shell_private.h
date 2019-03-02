@@ -36,7 +36,7 @@ typedef struct shell_private_data
 }shell_private_data_t;
 
 
-
+int shell_private_add_new_page(shell_private_data_t * priv, GtkWidget * webview);
 
 #ifdef _cplusplus
 }
