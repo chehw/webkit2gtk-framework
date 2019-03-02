@@ -43,7 +43,7 @@ clean:
 	rm -f *.o obj/*.o $(TARGET) test/*.o test/obj/*.o utils/*.o utils/obj/*.o  obj/plugins/*.o
 	
 do_init:
-	mkdir -p obj test/obj bin lib  obj/plugins 
+	mkdir -p obj test/obj bin lib  obj/plugins log tmp 
 		
 test:
 	cd test && ./make.sh
